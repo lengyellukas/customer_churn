@@ -4,11 +4,13 @@ and Logistic Regression """
 
 # import libraries
 import os
+from statistics import linear_regression
+import joblib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.metrics import classification_report
+from sklearn.metrics import plot_roc_curve, classification_report
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
@@ -248,6 +250,20 @@ def save_results(y, y_predicted, report_name, file_name):
 
     plt.savefig(full_path)
 
+def save_roc_curve(plot, file_name):
+    '''
+    helper method to store the roc curve
+    input:
+            plot: figure to be stored
+            file_name: name under which will be the figure stored
+    output:
+            None
+    '''
+    plot.figure(figsize=(15, 8))
+    image_path = './images/results/'
+    file_name_suffix = 'png'
+    full_path = os.path.join(image_path, file_name + '.' + file_name_suffix)
+    plot.savefig(full_path)
 
 def feature_importance_plot(model, X_data, output_pth):
     '''
@@ -325,20 +341,33 @@ def train_models(X_train, X_test, y_train, y_test):
     logistic_regression.fit(X_train, y_train)
 
     # predict using random forest classifier using feature sat
-    y_train_preds_rf = cross_validation_rfc.best_estimator_.predict(X_train)
-    y_test_preds_rf = cross_validation_rfc.best_estimator_.predict(X_test)
+    y_train_prediction_rf = cross_validation_rfc.best_estimator_.predict(X_train)
+    y_test_prediction_rf = cross_validation_rfc.best_estimator_.predict(X_test)
 
     # predict using logistic regression using feature set
-    y_train_preds_lr = logistic_regression.predict(X_train)
-    y_test_preds_lr = logistic_regression.predict(X_test)
+    y_train_prediction_lr = logistic_regression.predict(X_train)
+    y_test_prediction_lr = logistic_regression.predict(X_test)
 
     # store model results
     classification_report_image(y_train,
                                 y_test,
-                                y_train_preds_lr,
-                                y_train_preds_rf,
-                                y_test_preds_lr,
-                                y_test_preds_rf)
+                                y_train_prediction_lr,
+                                y_train_prediction_rf,
+                                y_test_prediction_lr,
+                                y_test_prediction_rf)
+
+    #lrc_roc plot
+    lrc_plot = plot_roc_curve(logistic_regression, X_test, y_test)
+    ax = plt.gca()
+    lrc_plot.plot(ax=ax, alpha=0.8)
+    save_roc_curve(lrc_plot, 'logistic_regression_roc_curve')
+    #rfc_roc plot
+    rfc_disp = plot_roc_curve(cross_validation_rfc.best_estimator_, X_test, y_test, ax=ax, alpha=0.8)
+    save_roc_curve(rfc_disp, 'cross_validation_rfc')
+
+    #store model
+    joblib.dump(cross_validation_rfc.best_estimator_, './models/rfc_model.pkl')
+    joblib.dump(logistic_regression, './models/logistic_model.pkl')
 
     X = X_train.merge(X_test)
 
