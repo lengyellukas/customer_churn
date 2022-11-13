@@ -4,8 +4,9 @@ and Logistic Regression """
 
 # import libraries
 import os
-from statistics import linear_regression
 import joblib
+import logging
+import matplotlib
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,6 +19,15 @@ from sklearn.model_selection import train_test_split
 
 
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
+matplotlib.use('Agg')
+sns.set()
+
+#basic logging configuration
+logging.basicConfig(
+    filename='./results.log',
+    level=logging.INFO,
+    filemode='w',
+    format='%(name)s - %(levelname)s - %(message)s')
 
 def import_data(pth):
     '''
@@ -28,7 +38,9 @@ def import_data(pth):
     output:
             dataframe: pandas dataframe
     '''
-    return pd.read_csv(pth)
+    read_data_frame = pd.read_csv(pth)
+    logging.info("csv file has been successfully read")
+    return read_data_frame
 
 
 def perform_eda(dataframe):
@@ -38,68 +50,57 @@ def perform_eda(dataframe):
             dataframe: pandas dataframe
 
     output
-            None
+            dataframe_eda: pandas dataframe with Churn
     '''
-    # get some basic statistic values
-    dataframe.describe()
+    # create copy of dataframe
+    dataframe_eda = dataframe.copy(deep=True)
 
     # categorize the column Attrition_Flag
     # existing customer is marked as 0, and the attired customer is marked as 1
-    dataframe['Churn'] = dataframe['Attrition_Flag'].apply(
+    dataframe_eda['Churn'] = dataframe_eda['Attrition_Flag'].apply(
         lambda val: 0 if val == "Existing Customer" else 1)
 
     # create histogram of customer churn
-    # plt.figure(figsize=(20,10))
-    customer_churn_histogram = dataframe['Churn'].hist()
-    save_eda_image(customer_churn_histogram, 'customer_churn_histogram')
+    plt.figure(figsize=(20,10))
+    dataframe_eda['Churn'].hist()
+    logging.info("Customer Churn histogram created")
+    plt.savefig(fname='./images/eda/customer_churn_histogram.png')
+    plt.close()
 
     # create histogram of customer age
-    # plt.figure(figsize=(20,10))
-    customer_age_histogram = dataframe['Customer_Age'].hist()
-    save_eda_image(customer_age_histogram, 'customer_age_histogram')
+    plt.figure(figsize=(20,10))
+    dataframe_eda['Customer_Age'].hist()
+    logging.info("Customer Age histogram created")
+    plt.savefig(fname='./images/eda/customer_age_histogram.png')
+    plt.close()
 
     # create bar chart of customer marital status
-    # plt.figure(figsize=(20,10))
-    marital_status_bar_chart = dataframe.Marital_Status.value_counts(
-        'normalize').plot(kind='bar')
-    save_eda_image(marital_status_bar_chart, 'marital_status_bar_chart')
+    plt.figure(figsize=(20,10))
+    dataframe_eda.Marital_Status.value_counts('normalize').plot(kind='bar')
+    logging.info("Maritual Status Bar chart created")
+    plt.savefig(fname='./images/eda/marital_status_bar_chart.png')
+    plt.close()
 
     # create transaction density histoplot
-    # plt.figure(figsize=(20,10))
-    transaction_density_histogram = sns.histplot(
-        dataframe['Total_Trans_Ct'], stat='density', kde=True)
-    save_eda_image(
-        transaction_density_histogram,
-        'transaction_density_histogram')
+    plt.figure(figsize=(20,10))
+    sns.histplot(dataframe_eda['Total_Trans_Ct'], stat='density', kde=True)
+    logging.info("Transaction Density Histogram created")
+    plt.savefig(fname='./images/eda/transaction_density_histogram.png')
+    plt.close()
 
-    # create another fancy thing
-    # plt.figure(figsize=(20,10))
-    heatmap = sns.heatmap(dataframe.corr(), annot=False, cmap='Dark2_r', linewidths=2)
-    save_eda_image(heatmap, 'heatmap')
+    # create fancy heatmap
+    plt.figure(figsize=(20,10))
+    sns.heatmap(dataframe_eda.corr(), annot=False, cmap='Dark2_r', linewidths=2)
+    logging.info("Heatmap created")
+    plt.savefig(fname='./images/eda/heatmap.png')
+    plt.close()
 
+    return dataframe_eda
 
-def save_eda_image(plot, file_name):
+def encoder_helper(dataframe, category_list, response):
     '''
-    helper function to save a plot with a specified name as png image
-
-    input:
-            plot: figure to be stored
-            file_name: file name under which should the figure be stored
-
-    output:
-            None
-    '''
-    image_path = './images/eda/'
-    file_name_suffix = 'png'
-    full_path = os.path.join(image_path, file_name + '.' + file_name_suffix)
-    plt.figure(figsize=(20, 10))
-    plot.figure.savefig(full_path)
-
-
-def encoder_helper(dataframe, category_list, response=None):
-    '''
-    helper function to turn each categorical column into a new column with
-    propotion of churn for each category - associated with cell 15 from the notebook
+    helper function to turn each categorical column into a new column with propotion
+    of churn for each category - associated with cell 15 from the notebook
 
     input:
             dataframe: pandas dataframe
@@ -110,20 +111,31 @@ def encoder_helper(dataframe, category_list, response=None):
     output:
             dataframe: pandas dataframe with new columns for
     '''
+    # create copy of dataframe
+    dataframe_encode = dataframe.copy(deep=True)
+
+    logging.info("turning each categorical column into a new column with propotion of churn")
     for category in category_list:
         temp_list = []
         temp_groups = dataframe.groupby(category).mean()['Churn']
+        
+        for cat in dataframe[category]:
+            logging.info("Converting categorical column %s", cat)    
+            temp_list.append(temp_groups.loc[cat])
 
-        for val in dataframe[category]:
-            temp_list.append(temp_groups.loc[val])
+        if response:
+            new_column = category + "_" + response
+            logging.info("Creating new column %s", new_column)
+            dataframe_encode[new_column] = temp_list
+        
+        else:
+            dataframe_encode[category] = temp_list
 
-        new_col = category + "_Churn"
-        dataframe[new_col] = temp_list
-
-    return dataframe
+    logging.info("Returning dataframe with new columns")
+    return dataframe_encode
 
 
-def perform_feature_engineering(dataframe, response=None):
+def perform_feature_engineering(dataframe, response):
     '''
     input:
             dataframe: pandas dataframe
@@ -136,12 +148,6 @@ def perform_feature_engineering(dataframe, response=None):
             y_train: y training data
             y_test: y testing data
     '''
-    # divide date into training and testing data
-    # get the dependent variable from dataframe => Customer Churn
-    y = dataframe['Churn']
-    # create empty dataframe
-    X = pd.DataFrame()
-
     # encode categorical data put it into the relation with Credit_Limit
     category_list = [
         'Gender',
@@ -149,7 +155,13 @@ def perform_feature_engineering(dataframe, response=None):
         'Marital_Status',
         'Income_Category',
         'Card_Category']
-    dataframe_with_new_cols = encoder_helper(dataframe, category_list, response)
+    dataframe_encoded = encoder_helper(dataframe, category_list, response)
+
+    # divide date into training and testing data
+    # get the dependent variable from dataframe => Customer Churn
+    y = dataframe_encoded['Churn']
+    # create empty dataframe
+    X = pd.DataFrame()
 
     keep_cols = [
         'Customer_Age',
@@ -172,9 +184,10 @@ def perform_feature_engineering(dataframe, response=None):
         'Income_Category_Churn',
         'Card_Category_Churn']
 
-    X[keep_cols] = dataframe_with_new_cols[keep_cols]
+    X[keep_cols] = dataframe_encoded[keep_cols]
 
     # split into training set and test set
+    logging.info("Split data into training set and test set")
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=0.3, random_state=42)
     return X_train, X_test, y_train, y_test
@@ -200,84 +213,60 @@ def classification_report_image(y_train,
     output:
              None
     '''
-    save_results(
-        y_test,
-        y_test_preds_rf,
-        'Random Forest Test',
-        'random_forest_test')
-    save_results(
-        y_train,
-        y_train_preds_rf,
-        'Random Forest Train',
-        'random_forest_train')
-    save_results(
-        y_test,
-        y_test_preds_lr,
-        'Logistic Regression Test',
-        'logistic_regression_test')
-    save_results(
-        y_train,
-        y_train_preds_lr,
-        'Logistic Regression Train',
-        'logistic_regression_train')
-
-
-def save_results(y, y_predicted, report_name, file_name):
-    '''
-    helper function to save the results of the prediction to the specific folder
-    input:
-            y: test values
-            y_preds: predicted values
-            report_name: name of the stored report
-            file_name:  name of the stored file
-
-    output:
-            Nones
-    '''
-    image_path = './images/results/'
-    file_name_suffix = 'png'
-    full_path = os.path.join(image_path, file_name + '.' + file_name_suffix)
-    font = 'monospace'
-    font_size = 10
-
-    plt.rc('figure', figsize=(5, 5))
-    plt.text(
-        0.01, 0.6, str(report_name), {
-            'fontsize': font_size}, fontproperties=font)
-    plt.text(0.01, 0.7, str(classification_report(y, y_predicted)),
-             {'fontsize': font_size}, fontproperties=font)
+    logging.info("Creating classification reports and storing them into files")
+    #Random Forest Classifier
+    plt.rc('figure', figsize=(6, 6))
+    plt.text(0.01, 1.25,
+            str('Random Forest Train'),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.05,
+            str(classification_report(y_test, y_test_preds_rf)),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.6,
+            str('Random Forest Test'),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.7,
+            str(classification_report(y_train, y_train_preds_rf)),
+            {'fontsize': 10}, fontproperties='monospace')
     plt.axis('off')
+    plt.savefig(fname='./images/results/random_forest_results.png')
+    logging.info("The result has been stored in the file %s", "random_forest_results.png")
+    plt.close()
 
-    plt.savefig(full_path)
+    # Logistic Regression
+    plt.rc('figure', figsize=(6, 6))
+    plt.text(0.01, 1.25,
+            str('Logistic Regression Train'),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.05,
+            str(classification_report(y_train, y_train_preds_lr)),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.6,
+    str('Logistic Regression Test'),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.text(0.01, 0.7,
+            str(classification_report(y_test, y_test_preds_lr)),
+            {'fontsize': 10}, fontproperties='monospace')
+    plt.axis('off')
+    plt.savefig(fname='./images/results/logistic_results.png')
+    logging.info("The result has been stored in the file %s", "logistic_results.png")
+    plt.close()
 
-def save_roc_curve(plot, file_name):
-    '''
-    helper method to store the roc curve
-    input:
-            plot: figure to be stored
-            file_name: name under which will be the figure stored
-    output:
-            None
-    '''
-    plot.figure(figsize=(15, 8))
-    image_path = './images/results/'
-    file_name_suffix = 'png'
-    full_path = os.path.join(image_path, file_name + '.' + file_name_suffix)
-    plot.savefig(full_path)
 
-def feature_importance_plot(model, X_data, output_pth):
+def feature_importance_plot(model, X_data, output_path):
     '''
-    creates and stores the feature importances in pth
+    creates and stores the feature importances in path
     input:
             model: model object containing feature_importances_
             X_data: pandas dataframe of X values
-            output_pth: path to store the figure
+            output_path: path to store the figure
 
     output:
              None
     '''
     # Calculate feature importances
-    importances = model.feature_importances_
+    logging.info("Starting to calculate feature importances")
+    importances = model.best_estimator_.feature_importances_
     # Sort feature importances in descending order
     indices = np.argsort(importances)[::-1]
 
@@ -285,7 +274,7 @@ def feature_importance_plot(model, X_data, output_pth):
     names = [X_data.columns[i] for i in indices]
 
     # Create plot
-    plt.figure(figsize=(20, 5))
+    plt.figure(figsize=(25, 20))
 
     # Create plot title
     plt.title("Feature Importance")
@@ -299,12 +288,15 @@ def feature_importance_plot(model, X_data, output_pth):
 
     # store the feature importance
     file_name_suffix = 'png'
+    feature_file_name = 'feature_importance'
     full_path = os.path.join(
-        output_pth,
-        'feature_importance' +
+        output_path,
+        feature_file_name +
         '.' +
         file_name_suffix)
     plt.savefig(full_path)
+    logging.info("Feature importances were stored in the file %s.%s", 
+                                feature_file_name, file_name_suffix)
 
 
 def train_models(X_train, X_test, y_train, y_test):
@@ -318,13 +310,10 @@ def train_models(X_train, X_test, y_train, y_test):
     output:
               None
     '''
-    # grid search
-    random_forest_classifier = RandomForestClassifier(random_state=42)
-    # Use a different solver if the default 'lbfgs' fails to converge
-    # Reference:
-    # https://scikit-learn.org/stable/modules/linear_model.html#logistic-regression
-    logistic_regression = LogisticRegression(solver='lbfgs', max_iter=3000)
+    random_forest_classifier = RandomForestClassifier(random_state=42, n_jobs=-1)
+    logistic_regression = LogisticRegression(max_iter=1000, n_jobs=-1)
 
+    # grid search
     param_grid = {
         'n_estimators': [200, 500],
         'max_features': ['auto', 'sqrt'],
@@ -332,6 +321,7 @@ def train_models(X_train, X_test, y_train, y_test):
         'criterion': ['gini', 'entropy']
     }
 
+    logging.info("Calculating cross validation") 
     cross_validation_rfc = GridSearchCV(
         estimator=random_forest_classifier,
         param_grid=param_grid,
@@ -340,13 +330,31 @@ def train_models(X_train, X_test, y_train, y_test):
 
     logistic_regression.fit(X_train, y_train)
 
-    # predict using random forest classifier using feature sat
+    #store model
+    logging.info("Storing the models")
+    joblib.dump(cross_validation_rfc.best_estimator_, './models/rfc_model.pkl')
+    joblib.dump(logistic_regression, './models/logistic_model.pkl')
+    logging.info("The models were stored")
+
+    # predict using random forest classifier using feature set
+    logging.info("Predicting using random forrest classifier using feature set")
     y_train_prediction_rf = cross_validation_rfc.best_estimator_.predict(X_train)
     y_test_prediction_rf = cross_validation_rfc.best_estimator_.predict(X_test)
 
     # predict using logistic regression using feature set
+    logging.info("Predicting using logistic regression")
     y_train_prediction_lr = logistic_regression.predict(X_train)
     y_test_prediction_lr = logistic_regression.predict(X_test)
+
+    # roc curve
+    plt.figure(figsize=(15, 8))
+    ax = plt.gca()
+    logging.info("Calculating roc curve of logistic regression")
+    lrc_plot = plot_roc_curve(logistic_regression, X_test, y_test, ax=ax, alpha=0.8)
+    rfc_disp = plot_roc_curve(cross_validation_rfc.best_estimator_, 
+    X_test, y_test, ax=ax, alpha=0.8)
+    plt.savefig(fname='./images/results/roc_curve_result.png')
+    plt.close()
 
     # store model results
     classification_report_image(y_train,
@@ -356,29 +364,15 @@ def train_models(X_train, X_test, y_train, y_test):
                                 y_test_prediction_lr,
                                 y_test_prediction_rf)
 
-    #lrc_roc plot
-    lrc_plot = plot_roc_curve(logistic_regression, X_test, y_test)
-    ax = plt.gca()
-    lrc_plot.plot(ax=ax, alpha=0.8)
-    save_roc_curve(lrc_plot, 'logistic_regression_roc_curve')
-    #rfc_roc plot
-    rfc_disp = plot_roc_curve(cross_validation_rfc.best_estimator_, X_test, y_test, ax=ax, alpha=0.8)
-    save_roc_curve(rfc_disp, 'cross_validation_rfc')
-
-    #store model
-    joblib.dump(cross_validation_rfc.best_estimator_, './models/rfc_model.pkl')
-    joblib.dump(logistic_regression, './models/logistic_model.pkl')
-
-    X = X_train.merge(X_test)
-
     feature_importance_plot(
-        cross_validation_rfc.best_estimator_,
-        X,
-        './images/results/')
+        model=cross_validation_rfc,
+        X_data=X_test,
+        output_path='./images/results/')
 
 
 if __name__ == "__main__":
     data_frame = import_data("./data/bank_data.csv")
-    perform_eda(data_frame)
-    train_data_X, test_data_X, train_data_y, y_test_data_y = perform_feature_engineering(data_frame)
-    train_models(train_data_X, test_data_X, train_data_y, y_test_data_y)
+    dataframe_eda = perform_eda(data_frame)
+    train_data_X, test_data_X, train_data_y, test_data_y = perform_feature_engineering(
+        dataframe=dataframe_eda, response='Churn')
+    train_models(train_data_X, test_data_X, train_data_y, test_data_y)
