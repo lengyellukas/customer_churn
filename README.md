@@ -15,7 +15,9 @@ Overview of the files and data present in the root directory:
 ## Running Files
 The customer churn prediction is started by following command:
 
+```
 $ python churn_library.py
+```
 
 The results are stored in the images folder with following structure:
 * eda - EDA results
@@ -26,4 +28,6 @@ Running the tests
 
 The tests can be started by following command:
 
-pytest churn_script_logging_and_tests.py
+```
+$ pytest churn_script_logging_and_tests.py
+```
