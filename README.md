@@ -16,7 +16,7 @@ Overview of the files and data present in the root directory:
 The customer churn prediction is started by following command:
 
 ```
-$ python churn_library.py
+$ python3 churn_library.py
 ```
 
 The results are stored in the images folder with following structure:
