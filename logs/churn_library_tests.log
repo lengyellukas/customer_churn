@@ -1,0 +1,5 @@
+churn_library_tests - INFO - Testing import_data: SUCCESS
+churn_library_tests - INFO - Testing perform_eda: SUCCESS
+churn_library_tests - INFO - Testing encoder_helper: SUCCESS
+churn_library_tests - INFO - Testing perform_feature_engineering: SUCCESS
+churn_library_tests - INFO - Testing train_models: SUCCESS

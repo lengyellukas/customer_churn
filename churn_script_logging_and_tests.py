@@ -10,14 +10,16 @@ Date: 15.11.2022
 import logging
 import os
 from math import ceil
-import pytest
 import churn_library as cls
 
-logging.basicConfig(
-    filename='./logs/churn_library_tests.log',
-    level=logging.INFO,
-    filemode='w',
-    format='%(name)s - %(levelname)s - %(message)s')
+#define logger and file handler for the tests
+logger = logging.getLogger('churn_library_tests')
+logger.setLevel(logging.INFO)
+fh = logging.FileHandler('./logs/churn_library_tests.log')
+fh.setLevel(logging.INFO)
+formatter = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+logger.addHandler(fh)
 
 def test_import(path):
     '''
@@ -25,16 +27,16 @@ def test_import(path):
     '''
     try:
         data_frame = cls.import_data(path)
-        logging.info("Testing import_data: SUCCESS")
+        logger.info("Testing import_data: SUCCESS")
     except FileNotFoundError as err:
-        logging.error("Testing import_eda: %s", err)
+        logger.error("Testing import_eda: FAILED", exc_info=True)
         raise err
 
     try:
         assert data_frame.shape[0] > 0
         assert data_frame.shape[1] > 0
     except AssertionError as err:
-        logging.error(
+        logger.error(
             "Testing import_data: %s", err)
         raise err
 
@@ -43,7 +45,7 @@ def test_eda(path):
     '''
     test if eda can be executed
     '''
-    customer_churn_histogram_filename = "customer_churn_histogramh.png"
+    customer_churn_histogram_filename = "customer_churn_histogram.png"
     customer_age_histogram_filename = "customer_age_histogram.png"
     marital_status_bar_chart_filename = "marital_status_bar_chart.png"
     transaction_density_histogram_filename = "transaction_density_histogram.png"
@@ -53,7 +55,7 @@ def test_eda(path):
     try:
         cls.perform_eda(dataframe=dataframe)
     except KeyError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
     # was `customer_churn_histogram` created
@@ -61,7 +63,7 @@ def test_eda(path):
         assert os.path.isfile("./images/eda/" +
                               customer_churn_histogram_filename) is True
     except AssertionError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
     # was `customer_age_histogram.png` created
@@ -70,7 +72,7 @@ def test_eda(path):
             "./images/eda/" +
             customer_age_histogram_filename) is True
     except AssertionError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
     # was `marital_status_distribution.png` created
@@ -78,7 +80,7 @@ def test_eda(path):
         assert os.path.isfile("./images/eda/" +
                               marital_status_bar_chart_filename) is True
     except AssertionError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
     # was `transaction_density_histogram_filename.png` created
@@ -86,15 +88,15 @@ def test_eda(path):
         assert os.path.isfile("./images/eda/" +
                               transaction_density_histogram_filename) is True
     except AssertionError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
     # was `heatmap.png` is created
     try:
         assert os.path.isfile("./images/eda/" + heatmap_filename) is True
-        logging.info('Testing perform_eda: SUCCESS')
+        logger.info('Testing perform_eda: SUCCESS')
     except AssertionError as error:
-        logging.error("Testing perform_eda: %s", error)
+        logger.error("Testing perform_eda: FAILED", exc_info=True)
         raise error
 
 
@@ -125,7 +127,7 @@ def test_encoder_helper(path):
             response=None)
         assert encoded_dataframe.equals(dataframe) is True
     except AssertionError as error:
-        logging.error("Testing encoder_helper: %s", error)
+        logger.error("Testing encoder_helper: FAILED", exc_info=True)
         raise error
 
     try:
@@ -140,7 +142,7 @@ def test_encoder_helper(path):
     # Dataframe are different
         assert encoded_dataframe.equals(dataframe) is False
     except AssertionError as error:
-        logging.error("Testing encoder_helper: %s", error)
+        logger.error("Testing encoder_helper: FAILED", exc_info=True)
         raise error
 
     try:
@@ -160,10 +162,10 @@ def test_encoder_helper(path):
         assert len(
             encoded_dataframe.columns) == len(
             dataframe.columns) + len(category_list)
-        logging.info(
+        logger.info(
             "Testing encoder_helper: SUCCESS")
     except AssertionError as error:
-        logging.error("Testing encoder_helper: %s", error)
+        logger.error("Testing encoder_helper: FAILED", exc_info=True)
         raise error
 
 
@@ -186,18 +188,18 @@ def test_perform_feature_engineering(path):
     # Churn is in Dataframe
         assert 'Churn' in dataframe.columns
     except KeyError as error:
-        logging.error(
-            "Testing perform_feature_engineering: %s", error)
+        logger.error(
+            "Testing perform_feature_engineering: FAILED", exc_info=True)
         raise error
 
     try:
         # x_test size is 30%
         assert (x_test.shape[0] == ceil(dataframe.shape[0] * 0.3)) is True
-        logging.info(
+        logger.info(
             "Testing perform_feature_engineering: SUCCESS")
     except AssertionError as error:
-        logging.error(
-            "Testing perform_feature_engineering: %s", error)
+        logger.error(
+            "Testing perform_feature_engineering: FAILED", exc_info=True)
         raise error
 
 
@@ -229,21 +231,21 @@ def test_train_models(path):
         cls.train_models(x_train, x_test, y_train, y_test)
         assert os.path.isfile("./models/" + logistic_model_filename) is True
     except AssertionError as error:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise error
 
     # was random forest classifier model created
     try:
         assert os.path.isfile("./models/" + rfc_model_filename) is True
     except AssertionError as error:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise error
 
     # was roc curve result created
     try:
         assert os.path.isfile('./images/results/' + roc_curve_filename) is True
     except AssertionError as error:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise error
 
     # was random forest lassifier results created
@@ -252,7 +254,7 @@ def test_train_models(path):
             './images/results/' +
             random_forest_results_filename) is True
     except AssertionError as err:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise err
 
     # was logistic results created
@@ -261,7 +263,7 @@ def test_train_models(path):
             './images/results/' +
             logistic_results_filename) is True
     except AssertionError as error:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise error
 
     # was feature importance created
@@ -269,10 +271,10 @@ def test_train_models(path):
         assert os.path.isfile(
             './images/results/' +
             feature_importance_filename) is True
-        logging.info(
+        logger.info(
             "Testing train_models: SUCCESS")
     except AssertionError as error:
-        logging.error("Testing train_models: %s", error)
+        logger.error("Testing train_models: FAILED", exc_info=True)
         raise error
 
 
