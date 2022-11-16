@@ -29,5 +29,5 @@ Running the tests
 The tests can be started by following command:
 
 ```
-$ pytest churn_script_logging_and_tests.py
+$ python3 churn_script_logging_and_tests.py
 ```
